@@ -1,5 +1,6 @@
 package com.ecommerce.app.service;
 
+import com.ecommerce.app.dto.OrderRequest;
 import com.ecommerce.app.model.*;
 import com.ecommerce.app.repository.CartItemRepository;
 import com.ecommerce.app.repository.OrderRepository;
@@ -18,9 +19,10 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final CartItemRepository cartItemRepository;
     private final UserRepository userRepository;
+    private final QikinkService qikinkService;
 
     @Transactional
-    public Order placeOrder(Long userId, String shippingAddress) {
+    public Order placeOrder(Long userId, OrderRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -31,7 +33,11 @@ public class OrderService {
 
         Order order = new Order();
         order.setUser(user);
-        order.setShippingAddress(shippingAddress);
+        order.setShippingAddress(request.getShippingAddress());
+        order.setShippingCity(request.getShippingCity());
+        order.setShippingState(request.getShippingState());
+        order.setShippingZip(request.getShippingZip());
+        order.setShippingPhone(request.getShippingPhone());
         order.setStatus(Order.OrderStatus.PENDING);
 
         BigDecimal total = BigDecimal.ZERO;
@@ -72,6 +78,13 @@ public class OrderService {
     public Order updateOrderStatus(Long orderId, Order.OrderStatus status) {
         Order order = getOrderById(orderId);
         order.setStatus(status);
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+        // Push Qikink-fulfilled items once the admin confirms the order (not on PENDING,
+        // so a still-uncertain order — e.g. awaiting payment — never gets sent to print).
+        if (status == Order.OrderStatus.CONFIRMED) {
+            qikinkService.pushOrderIfApplicable(saved);
+            saved = orderRepository.save(saved); // persist qikinkPushed flag if it was set
+        }
+        return saved;
     }
 }
