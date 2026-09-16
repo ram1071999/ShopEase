@@ -42,6 +42,12 @@ public class ProductService {
         existing.setImageUrl(updated.getImageUrl());
         existing.setCategory(updated.getCategory());
         existing.setStockQuantity(updated.getStockQuantity());
+        existing.setRating(updated.getRating());
+        // Dropshipping fields were previously silently dropped on update — fixed here.
+        existing.setCostPrice(updated.getCostPrice());
+        existing.setSupplierName(updated.getSupplierName());
+        existing.setSupplierUrl(updated.getSupplierUrl());
+        existing.setSupplierSku(updated.getSupplierSku());
         return productRepository.save(existing);
     }
 
