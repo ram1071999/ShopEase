@@ -27,7 +27,7 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<OrderResponse> placeOrder(HttpServletRequest request, @Valid @RequestBody OrderRequest body) {
         Long userId = (Long) request.getAttribute("currentUserId");
-        Order order = orderService.placeOrder(userId, body.getShippingAddress());
+        Order order = orderService.placeOrder(userId, body);
         return ResponseEntity.ok(OrderResponse.from(order));
     }
 
