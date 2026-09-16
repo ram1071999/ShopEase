@@ -32,6 +32,17 @@ public class Order {
 
     private String shippingAddress;
 
+    private String shippingCity;
+
+    private String shippingState;
+
+    private String shippingZip;
+
+    private String shippingPhone;
+
+    /** Set true once this order's Qikink-fulfilled items have been pushed to Qikink, to avoid double-push. */
+    private boolean qikinkPushed = false;
+
     @Enumerated(EnumType.STRING)
     private OrderStatus status = OrderStatus.PENDING;
 
