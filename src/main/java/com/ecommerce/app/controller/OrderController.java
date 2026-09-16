@@ -38,7 +38,12 @@ public class OrderController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<OrderResponse> getOrder(@PathVariable Long id) {
-        return ResponseEntity.ok(OrderResponse.from(orderService.getOrderById(id)));
+    public ResponseEntity<OrderResponse> getOrder(HttpServletRequest request, @PathVariable Long id) {
+        Long userId = (Long) request.getAttribute("currentUserId");
+        Order order = orderService.getOrderById(id);
+        if (!order.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Order not found");
+        }
+        return ResponseEntity.ok(OrderResponse.from(order));
     }
 }
