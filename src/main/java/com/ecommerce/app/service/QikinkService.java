@@ -144,8 +144,8 @@ public class QikinkService {
         shippingAddress.put("email", user.getEmail());
         shippingAddress.put("city", order.getShippingCity());
         shippingAddress.put("zip", order.getShippingZip());
-        shippingAddress.put("state", order.getShippingState());
-        shippingAddress.put("country", "India");
+        
+        
 
         Map<String, Object> payload = new HashMap<>();
         // Qikink caps order_number at 15 chars.
