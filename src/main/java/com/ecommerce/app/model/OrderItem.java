@@ -1,5 +1,6 @@
 package com.ecommerce.app.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;   // ← ye naya import add karo
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -20,6 +21,7 @@ public class OrderItem {
 
     @ManyToOne
     @JoinColumn(name = "order_id", nullable = false)
+    @JsonIgnore                                         // ← ye naya annotation add karo
     private Order order;
 
     @ManyToOne
