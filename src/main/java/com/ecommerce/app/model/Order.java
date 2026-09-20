@@ -3,7 +3,9 @@ package com.ecommerce.app.model;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -26,6 +28,8 @@ public class Order {
     private User user;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private List<OrderItem> items = new ArrayList<>();
 
     private BigDecimal totalAmount;
@@ -42,6 +46,16 @@ public class Order {
 
     /** Set true once this order's Qikink-fulfilled items have been pushed to Qikink, to avoid double-push. */
     private boolean qikinkPushed = false;
+
+    /** "COD" ya "ONLINE" */
+    private String paymentMethod = "COD";
+
+    /** "PENDING", "PAID" ya "FAILED" */
+    private String paymentStatus = "PENDING";
+
+    private String razorpayOrderId;
+
+    private String razorpayPaymentId;
 
     @Enumerated(EnumType.STRING)
     private OrderStatus status = OrderStatus.PENDING;
