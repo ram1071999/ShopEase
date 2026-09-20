@@ -1,6 +1,7 @@
 package com.ecommerce.app.controller;
 
 import com.ecommerce.app.service.PaymentService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,13 +20,16 @@ public class PaymentController {
     private final PaymentService paymentService;
 
     @PostMapping("/create/{orderId}")
-    public ResponseEntity<?> create(@PathVariable Long orderId) {
-        return ResponseEntity.ok(paymentService.createRazorpayOrder(orderId));
+    public ResponseEntity<?> create(HttpServletRequest request, @PathVariable Long orderId) {
+        Long userId = (Long) request.getAttribute("currentUserId");
+        return ResponseEntity.ok(paymentService.createRazorpayOrder(userId, orderId));
     }
 
     @PostMapping("/verify")
-    public ResponseEntity<?> verify(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> verify(HttpServletRequest request, @RequestBody Map<String, String> body) {
+        Long userId = (Long) request.getAttribute("currentUserId");
         boolean ok = paymentService.verifyAndMarkPaid(
+                userId,
                 body.get("razorpayOrderId"),
                 body.get("razorpayPaymentId"),
                 body.get("razorpaySignature"));
