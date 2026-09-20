@@ -77,6 +77,14 @@ public class OrderService {
     @Transactional
     public Order updateOrderStatus(Long orderId, Order.OrderStatus status) {
         Order order = getOrderById(orderId);
+
+        // Online payment wale order ko tabhi CONFIRM (aur Qikink ko push) karo jab paise aa chuke hon.
+        if (status == Order.OrderStatus.CONFIRMED
+                && "ONLINE".equals(order.getPaymentMethod())
+                && !"PAID".equals(order.getPaymentStatus())) {
+            throw new RuntimeException("Online payment abhi PAID nahi hai, order confirm nahi ho sakta");
+        }
+
         order.setStatus(status);
         Order saved = orderRepository.save(order);
         // Push Qikink-fulfilled items once the admin confirms the order (not on PENDING,
