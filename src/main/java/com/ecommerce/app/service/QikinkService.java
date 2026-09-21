@@ -34,13 +34,6 @@ import java.util.Map;
  * product missing its SKU) is logged and swallowed rather than thrown, so a
  * Qikink outage never blocks updating an order's status in ShopEase itself.
  * Check the application logs (or Order.qikinkPushed) to confirm a push worked.
- *
- * NOTE: Qikink's request field names (esp. the shipping-address state/province
- * key) were reconstructed from public integration write-ups, not a live
- * Postman collection. If Qikink's dashboard shows a validation error, log the
- * raw response body (see the catch block below) and adjust buildOrderPayload
- * accordingly — the structure here is a solid starting point, not guaranteed
- * byte-for-byte correct against the current live API.
  */
 @Service
 @RequiredArgsConstructor
@@ -118,9 +111,10 @@ public class QikinkService {
         User user = order.getUser();
         String[] nameParts = splitName(user.getName());
 
+        // Qikink wants the RETAIL amount charged to the customer, not our cost price.
         BigDecimal totalValue = items.stream()
-                .map(i -> i.getProduct().getCostPrice() != null
-                        ? i.getProduct().getCostPrice().multiply(BigDecimal.valueOf(i.getQuantity()))
+                .map(i -> i.getPriceAtPurchase() != null
+                        ? i.getPriceAtPurchase().multiply(BigDecimal.valueOf(i.getQuantity()))
                         : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -130,8 +124,8 @@ public class QikinkService {
             line.put("search_from_my_products", 1);
             line.put("sku", item.getProduct().getSupplierSku());
             line.put("quantity", String.valueOf(item.getQuantity()));
-            line.put("price", item.getProduct().getCostPrice() != null
-                    ? item.getProduct().getCostPrice().toPlainString() : "0");
+            line.put("price", item.getPriceAtPurchase() != null
+                    ? item.getPriceAtPurchase().toPlainString() : "0");
             lineItems.add(line);
         }
 
@@ -144,14 +138,19 @@ public class QikinkService {
         shippingAddress.put("email", user.getEmail());
         shippingAddress.put("city", order.getShippingCity());
         shippingAddress.put("zip", order.getShippingZip());
-        
-        
+        // TODO: Qikink requires a real state/province — ShopEase doesn't currently
+        // capture this at checkout. Replace with order.getShippingState() once that
+        // field exists, otherwise Qikink may reject the order.
+        shippingAddress.put("province", "NA");
+        shippingAddress.put("country_code", "IN");
 
         Map<String, Object> payload = new HashMap<>();
         // Qikink caps order_number at 15 chars.
         payload.put("order_number", ("SE" + order.getId()).substring(0, Math.min(15, ("SE" + order.getId()).length())));
         payload.put("qikink_shipping", "1");
-        payload.put("gateway", "Prepaid");
+        // Must match how the customer actually paid — Qikink treats "Prepaid" as
+        // already-paid and "COD" as collect-on-delivery.
+        payload.put("gateway", "COD".equalsIgnoreCase(order.getPaymentMethod()) ? "COD" : "Prepaid");
         payload.put("total_order_value", totalValue.toPlainString());
         payload.put("line_items", lineItems);
         payload.put("shipping_address", shippingAddress);
@@ -167,7 +166,7 @@ public class QikinkService {
     private void sendCreateOrder(String token, Map<String, Object> payload) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Clientid", properties.getClientId());
+        headers.set("ClientId", properties.getClientId());
         headers.set("Accesstoken", token);
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
