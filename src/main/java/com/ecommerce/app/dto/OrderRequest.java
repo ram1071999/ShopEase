@@ -14,4 +14,7 @@ public class OrderRequest {
     private String shippingState;
     private String shippingZip;
     private String shippingPhone;
+
+    // "COD" (default) or "ONLINE"
+    private String paymentMethod;
 }

@@ -21,6 +21,8 @@ public class OrderResponse {
     private String shippingAddress;
     private Order.OrderStatus status;
     private LocalDateTime createdAt;
+    private String paymentMethod;
+    private String paymentStatus;
 
     public static OrderResponse from(Order order) {
         return new OrderResponse(
@@ -29,7 +31,9 @@ public class OrderResponse {
                 order.getTotalAmount(),
                 order.getShippingAddress(),
                 order.getStatus(),
-                order.getCreatedAt()
+                order.getCreatedAt(),
+                order.getPaymentMethod(),
+                order.getPaymentStatus()
         );
     }
 }
