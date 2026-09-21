@@ -28,13 +28,13 @@ public class PaymentController {
     @PostMapping("/verify")
     public ResponseEntity<?> verify(HttpServletRequest request, @RequestBody Map<String, String> body) {
         Long userId = (Long) request.getAttribute("currentUserId");
-        boolean ok = paymentService.verifyAndMarkPaid(
+        Long paidOrderId = paymentService.verifyAndMarkPaid(
                 userId,
                 body.get("razorpayOrderId"),
                 body.get("razorpayPaymentId"),
                 body.get("razorpaySignature"));
 
-        return ok
+        return paidOrderId != null
                 ? ResponseEntity.ok(Map.of("status", "PAID"))
                 : ResponseEntity.badRequest().body(Map.of("status", "FAILED"));
     }
