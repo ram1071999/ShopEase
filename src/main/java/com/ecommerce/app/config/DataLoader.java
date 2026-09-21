@@ -5,6 +5,8 @@ import com.ecommerce.app.model.User;
 import com.ecommerce.app.repository.ProductRepository;
 import com.ecommerce.app.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -14,11 +16,15 @@ import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class DataLoader implements CommandLineRunner {
 
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${app.admin.password:}")
+    private String adminPassword;
 
     @Override
     public void run(String... args) {
@@ -186,13 +192,23 @@ public class DataLoader implements CommandLineRunner {
     }
 
     private void seedAdminUser() {
-        if (userRepository.existsByEmail("admin@shopease.com")) return;
+        // Password comes from the ADMIN_PASSWORD environment variable, never from code.
+        if (adminPassword == null || adminPassword.isBlank()) {
+            log.warn("ADMIN_PASSWORD is not set: admin user is not created or updated.");
+            return;
+        }
 
-        User admin = new User();
-        admin.setName("Admin");
-        admin.setEmail("admin@shopease.com");
-        admin.setPassword(passwordEncoder.encode("admin123"));
-        admin.setRoles(Set.of("ROLE_ADMIN", "ROLE_USER"));
-        userRepository.save(admin);
+        User admin = userRepository.findByEmail("admin@shopease.com").orElseGet(User::new);
+        boolean isNew = admin.getId() == null;
+
+        if (isNew) {
+            admin.setName("Admin");
+            admin.setEmail("admin@shopease.com");
+            admin.setRoles(Set.of("ROLE_ADMIN", "ROLE_USER"));
+        }
+        if (isNew || admin.getPassword() == null || !passwordEncoder.matches(adminPassword, admin.getPassword())) {
+            admin.setPassword(passwordEncoder.encode(adminPassword));
+            userRepository.save(admin);
+        }
     }
 }
