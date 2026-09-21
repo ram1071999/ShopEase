@@ -6,6 +6,8 @@ import com.ecommerce.app.repository.CartItemRepository;
 import com.ecommerce.app.repository.OrderRepository;
 import com.ecommerce.app.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,12 +16,17 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderService {
 
     private final OrderRepository orderRepository;
     private final CartItemRepository cartItemRepository;
     private final UserRepository userRepository;
     private final QikinkService qikinkService;
+
+    // false karne par paid order admin ke confirm karne tak PENDING rahega.
+    @Value("${app.auto-confirm-paid-orders:true}")
+    private boolean autoConfirmPaidOrders;
 
     @Transactional
     public Order placeOrder(Long userId, OrderRequest request) {
@@ -39,6 +46,9 @@ public class OrderService {
         order.setShippingZip(request.getShippingZip());
         order.setShippingPhone(request.getShippingPhone());
         order.setStatus(Order.OrderStatus.PENDING);
+        // Online orders stay unconfirmable until PaymentService marks them PAID.
+        order.setPaymentMethod("ONLINE".equalsIgnoreCase(request.getPaymentMethod()) ? "ONLINE" : "COD");
+        order.setPaymentStatus("PENDING");
 
         BigDecimal total = BigDecimal.ZERO;
         for (CartItem ci : cartItems) {
@@ -94,5 +104,30 @@ public class OrderService {
             saved = orderRepository.save(saved); // persist qikinkPushed flag if it was set
         }
         return saved;
+    }
+
+    /**
+     * Online payment PAID hote hi order ko CONFIRMED karta hai aur Qikink ko bhejta hai.
+     * Sirf ONLINE + PAID + PENDING order par chalta hai, COD par kabhi nahi.
+     * Dobara call hone par kuch nahi karta (status ab PENDING nahi hota).
+     */
+    @Transactional
+    public void confirmAfterPayment(Long orderId) {
+        if (!autoConfirmPaidOrders) {
+            return;
+        }
+        Order order = getOrderById(orderId);
+        if (!"ONLINE".equals(order.getPaymentMethod()) || !"PAID".equals(order.getPaymentStatus())) {
+            return;
+        }
+        if (order.getStatus() != Order.OrderStatus.PENDING) {
+            return;
+        }
+
+        order.setStatus(Order.OrderStatus.CONFIRMED);
+        Order saved = orderRepository.save(order);
+        qikinkService.pushOrderIfApplicable(saved);
+        orderRepository.save(saved); // qikinkPushed flag save karo
+        log.info("Order {} auto-confirmed after payment (qikinkPushed={})", orderId, saved.isQikinkPushed());
     }
 }

@@ -35,20 +35,35 @@ public class PaymentService {
     private String keySecret;
 
     /**
-     * Razorpay order banata hai. Amount hamesha DB ki price se nikalta hai, app se nahi.
+     * Razorpay order banata hai.
+     * - Sirf order ka owner payment shuru kar sakta hai.
+     * - Amount backend ke totalAmount se aata hai (OrderService DB ki price se nikalta hai), app se nahi.
      */
     @Transactional
-    public Map<String, Object> createRazorpayOrder(Long orderId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
-
-        if ("PAID".equals(order.getPaymentStatus())) {
-            throw new IllegalStateException("Order already paid");
+    public Map<String, Object> createRazorpayOrder(Long userId, Long orderId) {
+        if (keyId == null || keyId.isBlank() || keySecret == null || keySecret.isBlank()) {
+            throw new RuntimeException("Online payment abhi available nahi hai");
         }
 
-        BigDecimal total = order.getItems().stream()
-                .map(i -> i.getPriceAtPurchase().multiply(BigDecimal.valueOf(i.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        if (!order.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Order not found");
+        }
+        if ("PAID".equals(order.getPaymentStatus())) {
+            throw new RuntimeException("Order already paid");
+        }
+        if (order.getStatus() == Order.OrderStatus.CANCELLED) {
+            throw new RuntimeException("Order cancelled hai");
+        }
+
+        BigDecimal total = order.getTotalAmount();
+        if (total == null) {
+            total = order.getItems().stream()
+                    .map(i -> i.getPriceAtPurchase().multiply(BigDecimal.valueOf(i.getQuantity())))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
 
         long paise = total.multiply(BigDecimal.valueOf(100))
                 .setScale(0, RoundingMode.HALF_UP)
@@ -83,12 +98,16 @@ public class PaymentService {
     }
 
     /**
-     * Razorpay ka signature verify karta hai. Sahi ho tabhi order PAID hota hai.
+     * Razorpay ka signature verify karta hai. Sahi ho aur order isi user ka ho, tabhi PAID hota hai.
+     * Qikink push yahan nahi hota. PaymentController isko payment commit hone ke BAAD
+     * OrderService.confirmAfterPayment se karata hai, taaki Qikink ka error payment ko na roke.
+     *
+     * @return paid order ka id, ya null agar verification fail hui
      */
     @Transactional
-    public boolean verifyAndMarkPaid(String rzpOrderId, String rzpPaymentId, String signature) {
+    public Long verifyAndMarkPaid(Long userId, String rzpOrderId, String rzpPaymentId, String signature) {
         if (rzpOrderId == null || rzpPaymentId == null || signature == null) {
-            return false;
+            return null;
         }
 
         try {
@@ -100,21 +119,24 @@ public class PaymentService {
             if (!MessageDigest.isEqual(
                     expected.getBytes(StandardCharsets.UTF_8),
                     signature.getBytes(StandardCharsets.UTF_8))) {
-                return false;
+                return null;
             }
         } catch (Exception e) {
-            return false;
+            return null;
         }
 
         Order order = orderRepository.findByRazorpayOrderId(rzpOrderId)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+                .orElseThrow(() -> new RuntimeException("Order not found"));
 
-        order.setPaymentStatus("PAID");
-        order.setRazorpayPaymentId(rzpPaymentId);
-        orderRepository.save(order);
+        if (!order.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Order not found");
+        }
 
-        // TODO: yahan apna existing Qikink push call lagao (payment ke baad hi)
-
-        return true;
+        if (!"PAID".equals(order.getPaymentStatus())) {
+            order.setPaymentStatus("PAID");
+            order.setRazorpayPaymentId(rzpPaymentId);
+            orderRepository.save(order);
+        }
+        return order.getId();
     }
 }
