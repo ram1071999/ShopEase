@@ -33,9 +33,13 @@ public class AdminController {
 
     @GetMapping("/products")
     public List<Product> getAllProductsForAdmin() {
-        // Full entity including supplierName, supplierUrl, costPrice, supplierSku —
-        // this route is ADMIN-only (see SecurityConfig), unlike the public /api/products.
         return productRepository.findAll();
+    }
+
+    @PostMapping("/products")
+    public ResponseEntity<Product> createProduct(@RequestBody Product product) {
+        Product saved = productRepository.save(product);
+        return ResponseEntity.ok(saved);
     }
 
     @PutMapping("/orders/{id}/status")
