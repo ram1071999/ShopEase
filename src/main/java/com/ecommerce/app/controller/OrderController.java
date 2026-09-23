@@ -49,6 +49,14 @@ public class OrderController {
         return ResponseEntity.ok(OrderResponse.from(order));
     }
 
+    // ---------- Customer cancels their own order (sirf jab tak PENDING hai) ----------
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<OrderResponse> cancelOrder(HttpServletRequest request, @PathVariable Long id) {
+        Long userId = (Long) request.getAttribute("currentUserId");
+        Order order = orderService.cancelOrder(id, userId);
+        return ResponseEntity.ok(OrderResponse.from(order));
+    }
+
     // ---------- Qikink-style paginated + filterable order list ----------
     @GetMapping("/list")
     public OrderListResponse<OrderResponse> getMyOrdersPaged(
