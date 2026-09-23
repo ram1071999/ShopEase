@@ -1,5 +1,6 @@
 package com.ecommerce.app.controller;
 
+import com.ecommerce.app.dto.OrderListResponse;
 import com.ecommerce.app.dto.OrderStatusUpdateRequest;
 import com.ecommerce.app.model.Order;
 import com.ecommerce.app.model.Product;
@@ -9,6 +10,7 @@ import com.ecommerce.app.repository.UserRepository;
 import com.ecommerce.app.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,6 +18,7 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -29,6 +32,16 @@ public class AdminController {
     @GetMapping("/orders")
     public List<Order> getAllOrders() {
         return orderService.getAllOrders();
+    }
+
+    // ---------- Qikink-style paginated + filterable order list (full Order, admin-only) ----------
+    @GetMapping("/orders/list")
+    public OrderListResponse<Order> getAllOrdersPaged(
+            @RequestParam(required = false) Order.OrderStatus status,
+            @RequestParam(defaultValue = "1") int page_no,
+            @RequestParam(defaultValue = "10") int per_page) {
+        Page<Order> page = orderService.getAllOrdersPaged(status, page_no, per_page);
+        return OrderListResponse.from(page, Function.identity());
     }
 
     @GetMapping("/products")
