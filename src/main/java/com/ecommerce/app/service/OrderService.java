@@ -8,6 +8,9 @@ import com.ecommerce.app.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -82,6 +85,26 @@ public class OrderService {
 
     public List<Order> getAllOrders() {
         return orderRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    // ---------- Qikink-style paginated + filterable order list ----------
+
+    public Page<Order> getUserOrdersPaged(Long userId, Order.OrderStatus status, int pageNo, int perPage) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Pageable pageable = PageRequest.of(Math.max(pageNo - 1, 0), perPage);
+
+        return status != null
+                ? orderRepository.findByUserAndStatus(user, status, pageable)
+                : orderRepository.findByUser(user, pageable);
+    }
+
+    public Page<Order> getAllOrdersPaged(Order.OrderStatus status, int pageNo, int perPage) {
+        Pageable pageable = PageRequest.of(Math.max(pageNo - 1, 0), perPage);
+
+        return status != null
+                ? orderRepository.findByStatusOrderByCreatedAtDesc(status, pageable)
+                : orderRepository.findAllByOrderByCreatedAtDesc(pageable);
     }
 
     @Transactional
