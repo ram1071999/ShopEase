@@ -49,4 +49,10 @@ public class Product {
 
     /** Supplier's own SKU / product ID, useful when reordering or matching on their platform */
     private String supplierSku;
+
+    // ---------- Soft-delete flag ----------
+
+    /** Whether this product is visible/sellable. Set to false instead of hard-deleting when it has existing orders. */
+    @Column(nullable = false)
+    private Boolean active = true;
 }
