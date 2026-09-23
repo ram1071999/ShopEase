@@ -87,6 +87,25 @@ public class OrderService {
         return orderRepository.findAllByOrderByCreatedAtDesc();
     }
 
+    /**
+     * Customer apna khud ka order cancel karta hai — sirf jab tak PENDING hai.
+     * Admin CONFIRM kar chuka ho (Qikink ko print ke liye ja chuka) to cancel allowed nahi.
+     */
+    @Transactional
+    public Order cancelOrder(Long orderId, Long userId) {
+        Order order = getOrderById(orderId);
+
+        if (!order.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Order not found");
+        }
+        if (order.getStatus() != Order.OrderStatus.PENDING) {
+            throw new RuntimeException("Order ab cancel nahi ho sakta — status already " + order.getStatus());
+        }
+
+        order.setStatus(Order.OrderStatus.CANCELLED);
+        return orderRepository.save(order);
+    }
+
     // ---------- Qikink-style paginated + filterable order list ----------
 
     public Page<Order> getUserOrdersPaged(Long userId, Order.OrderStatus status, int pageNo, int perPage) {
