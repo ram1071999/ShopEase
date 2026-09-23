@@ -1,5 +1,6 @@
 package com.ecommerce.app.controller;
 
+import com.ecommerce.app.dto.OrderListResponse;
 import com.ecommerce.app.dto.OrderRequest;
 import com.ecommerce.app.dto.OrderResponse;
 import com.ecommerce.app.model.Order;
@@ -7,6 +8,7 @@ import com.ecommerce.app.service.OrderService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -45,5 +47,17 @@ public class OrderController {
             throw new RuntimeException("Order not found");
         }
         return ResponseEntity.ok(OrderResponse.from(order));
+    }
+
+    // ---------- Qikink-style paginated + filterable order list ----------
+    @GetMapping("/list")
+    public OrderListResponse<OrderResponse> getMyOrdersPaged(
+            HttpServletRequest request,
+            @RequestParam(required = false) Order.OrderStatus status,
+            @RequestParam(defaultValue = "1") int page_no,
+            @RequestParam(defaultValue = "10") int per_page) {
+        Long userId = (Long) request.getAttribute("currentUserId");
+        Page<Order> page = orderService.getUserOrdersPaged(userId, status, page_no, per_page);
+        return OrderListResponse.from(page, OrderResponse::from);
     }
 }
