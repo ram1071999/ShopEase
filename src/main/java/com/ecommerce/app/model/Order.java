@@ -63,6 +63,9 @@ public class Order {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public enum OrderStatus {
-        PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED
+        PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED,
+        // ---------- Qikink-style shipping-stage statuses (post-confirm tracking) ----------
+        DISPATCH_READY, IN_TRANSIT, DELIVERY_RESCHEDULED,
+        CONSIGNEE_UNAVAILABLE, INCORRECT_ADDRESS, EXCEPTION, ARCHIVED
     }
 }
