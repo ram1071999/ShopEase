@@ -42,6 +42,22 @@ public class AdminController {
         return ResponseEntity.ok(saved);
     }
 
+    // ---------- Soft-delete a product (avoids FK violation with order_items) ----------
+    @DeleteMapping("/products/{id}")
+    public ResponseEntity<Map<String, Object>> deleteProduct(@PathVariable Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + id));
+
+        product.setActive(false);
+        productRepository.save(product);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", product.getId());
+        response.put("active", product.getActive());
+        response.put("message", "Product deactivated (soft-deleted) successfully");
+        return ResponseEntity.ok(response);
+    }
+
     @PutMapping("/orders/{id}/status")
     public ResponseEntity<Order> updateOrderStatus(@PathVariable Long id,
                                                      @Valid @RequestBody OrderStatusUpdateRequest request) {
